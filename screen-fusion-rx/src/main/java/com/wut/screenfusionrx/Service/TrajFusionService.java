@@ -19,6 +19,7 @@ import com.wut.screenfusionrx.Model.TrajFrameModel;
 import com.wut.screenfusionrx.Service.TrajFusionSubService.TrajModelDeDuplicateService;
 import com.wut.screenfusionrx.Service.TrajFusionSubService.TrajModelLineCollectService;
 import com.wut.screenfusionrx.Service.TrajFusionSubService.TrajModelLineConnectService;
+import com.wut.screenfusionrx.Util.ModelConvertParamUtil;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -88,7 +89,7 @@ public List<Traj> collectFusionTraj(long timestamp) {
 //        storeTrajModelDeDuplicateTask(flushModelList).thenRunAsync(() -> {});
         // 轨迹融合第二步:填充历史轨迹队列
         List<Traj> trajList = flushModelList.stream().map(model -> {
-            int carType = model.getType();
+            int carType = ModelConvertParamUtil.carLengthToType(model.getLength());
             return DbModelTransformUtil.trajModelToTraj(ModelTransformUtil.vehicleToTraj(model, carType));
         }).toList();
 

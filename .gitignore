@@ -108,3 +108,6 @@ fabric.properties
 .idea
 app-screen-sx-logs
 target/
+*.class
+*.class
+*.class
