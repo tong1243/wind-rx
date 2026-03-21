@@ -16,7 +16,7 @@ public class FusionModuleStatic {
     public static final double FRENETX_TOLERANCE = 10;
     public static final double FRENETY_TOLERANCE = 3.75;
     public static final double FRENETX_PREDICT_FACTOR = 0.2;
-    public static final int FUSION_TIME_INTER = 200;
+    public static final int FUSION_TIME_INTER = 1000;
     public static final int CAR_TYPE_COUNT = 3;
     public static final int CAR_LANE_COUNT = 3;
     public static final long DEFAULT_TRAJ_ID = 0L;
