@@ -28,6 +28,7 @@ public class DbModelTransformUtil {
                 trajModel.getRoadDirect(),
                 trajModel.getCarId(),
                 trajModel.getLicenseColor(),
+                trajModel.getRoad(),
                 trajModel.getLane(),
                 trajModel.getType().toString(),
                 trajModel.getCarType() == null ? CAR_TYPE_COMPACT : trajModel.getCarType(),

@@ -40,6 +40,8 @@ public class VehicleModel {
     private Double headingAngle;    // 目标航向角
     @JsonProperty("fiberX")
     private Integer fiberX;
+    @JsonProperty("road")
+    private Integer road;
     private Integer lane;
     @JsonProperty("frenetAngle")
     private Double frenetAngle;

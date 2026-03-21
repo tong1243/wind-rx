@@ -45,6 +45,8 @@ public class TrajModel {
     private Double frenetXPrediction;
     @JsonProperty("frenetYPrediction")
     private Double frenetYPrediction;
+    @JsonProperty("road")
+    private Integer road;
     private Integer lane;
     @JsonProperty("rawId")
     private Integer rawId;

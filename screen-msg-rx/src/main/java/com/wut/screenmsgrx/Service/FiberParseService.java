@@ -59,8 +59,9 @@ public class FiberParseService {
         int id = parseInt(dataNode, "id", 0);
         int direction = parseInt(dataNode, "direction", parseInt(dataNode, "roadDirect", 1));
         int lane = parseInt(dataNode, "Lane_ID", parseInt(dataNode, "laneId", parseInt(dataNode, "lane", 1)));
+        int road = parseInt(dataNode, "road", 0);
         double distanceAlongRoad = parseDouble(dataNode, "distanceAlongRoad", parseDouble(dataNode, "frenetX", parseDouble(dataNode, "fiberX", 0.0)));
-        int type = parseInt(dataNode, "type",0);
+        int type = parseInt(dataNode, "type", MODEL_TYPE_FIBER);
         double speedKmh = parseDouble(dataNode, "speed", Double.NaN);
         double speedX = parseDouble(dataNode, "speedX", Double.isNaN(speedKmh) ? 0.0 : speedKmh / 3.6);
         double speedY = parseDouble(dataNode, "speedY", 0.0);
@@ -105,6 +106,7 @@ public class FiberParseService {
                 0.0,
                 headingAngle,
                 (int) Math.round(distanceAlongRoad),
+                road,
                 lane,
                 headingAngle,
                 String.valueOf(direction),

@@ -44,6 +44,7 @@ class FiberParseServiceTest {
                     "speed": 106.1,
                     "acc": 0.138,
                     "yaw": 1.637,
+                    "road": 112,
                     "Lane_ID": 4,
                     "distanceAlongRoad": 5437.222
                   }
@@ -60,6 +61,7 @@ class FiberParseServiceTest {
         assertEquals(2.6, model.getWidth(), 1e-6);
         assertEquals(5437.222, model.getFrenetX(), 1e-6);
         assertEquals(5437, model.getFiberX());
+        assertEquals(112, model.getRoad());
         assertEquals(4, model.getLane());
         assertEquals("1", model.getRoadDirect());
         assertEquals(106.1 / 3.6, model.getSpeed(), 1e-6);
