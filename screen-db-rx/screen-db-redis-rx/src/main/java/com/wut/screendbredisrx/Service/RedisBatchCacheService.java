@@ -11,6 +11,8 @@ import com.wut.screendbmysqlrx.Service.CarEventService;
 import com.wut.screendbmysqlrx.Service.TrajService;
 import com.wut.screendbredisrx.Context.BatchCacheTimeContext;
 import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -30,6 +32,7 @@ import static com.wut.screencommonrx.Static.FusionModuleStatic.*;
 
 @Component
 public class RedisBatchCacheService {
+    private static final Logger log = LoggerFactory.getLogger(RedisBatchCacheService.class);
     @Qualifier("redisTaskAsyncPool")
     private final Executor redisTaskAsyncPool;
     private final BatchCacheTimeContext batchCacheTimeContext;
@@ -154,6 +157,7 @@ public class RedisBatchCacheService {
                 TRAJ_CACHE_LOCK.lock();
                 if (!CollectionEmptyUtil.forList(readyToInsertList)) {
                     trajService.storeTrajData(time, readyToInsertList);
+                    log.info("traj batch flush success, tableDate={}, size={}", time, readyToInsertList.size());
                 }
             } catch (Exception e) { MessagePrintUtil.printException(e, "saveTrajBatchCache"); }
             finally { TRAJ_CACHE_LOCK.unlock(); }

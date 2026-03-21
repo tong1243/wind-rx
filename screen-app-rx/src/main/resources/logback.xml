@@ -27,8 +27,9 @@
         <appender-ref ref ="FILE"/>
     </appender>
 
-    <logger name="org.springframework.data.mongodb" level="DEBUG"/>
-    <logger name="com.wut.screendbmysqlrx.Mapper" level="DEBUG"/>
+    <logger name="org.springframework.data.mongodb" level="INFO"/>
+    <logger name="com.wut.screendbmysqlrx.Mapper" level="WARN"/>
+    <logger name="org.apache.ibatis" level="WARN"/>
     <logger name="org.apache.kafka" level="WARN"/>
     <root level="INFO">
         <appender-ref ref="CONSOLE"/>
