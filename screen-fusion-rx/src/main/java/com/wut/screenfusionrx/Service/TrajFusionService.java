@@ -110,12 +110,7 @@ public List<Traj> collectFusionTraj(long timestamp) {
                 }
                 trajDataContext.pushNewRecordCarNum(timestamp);
             }
-            switch (Integer.parseInt(traj.getType())) {
-                case MODEL_TYPE_FIBER -> traj.setCarId("鄂F" + String.format("%05d", (traj.getRawId() % 100000)));
-                case MODEL_TYPE_LASER -> traj.setCarId("鄂G" + String.format("%05d", (traj.getRawId() % 100000)));
-                case MODEL_TYPE_WAVE  -> traj.setCarId("鄂L" + String.format("%05d", (traj.getRawId() % 100000)));
-            }
-
+            traj.setCarId("鄂F" + String.format("%05d", (traj.getRawId() % 100000)));
         });
 
         // 向轨迹数据上下文存储当前时间戳下的累计车辆数信息

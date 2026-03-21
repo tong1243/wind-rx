@@ -60,7 +60,7 @@ public class FiberParseService {
         int direction = parseInt(dataNode, "direction", parseInt(dataNode, "roadDirect", 1));
         int lane = parseInt(dataNode, "Lane_ID", parseInt(dataNode, "laneId", parseInt(dataNode, "lane", 1)));
         double distanceAlongRoad = parseDouble(dataNode, "distanceAlongRoad", parseDouble(dataNode, "frenetX", parseDouble(dataNode, "fiberX", 0.0)));
-
+        int type = parseInt(dataNode, "type",0);
         double speedKmh = parseDouble(dataNode, "speed", Double.NaN);
         double speedX = parseDouble(dataNode, "speedX", Double.isNaN(speedKmh) ? 0.0 : speedKmh / 3.6);
         double speedY = parseDouble(dataNode, "speedY", 0.0);
@@ -88,7 +88,7 @@ public class FiberParseService {
                 DEFAULT_IP,
                 id,
                 FIBER_DEFAULT_IDDUP,
-                MODEL_TYPE_FIBER,
+                type,
                 length,
                 width,
                 distanceAlongRoad,
