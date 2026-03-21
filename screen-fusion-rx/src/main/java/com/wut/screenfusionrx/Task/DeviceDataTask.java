@@ -39,8 +39,8 @@ public class DeviceDataTask {
 
     @RabbitListener(queues = "device")
     public void eventDataListener(String timestampStr) {
-        startParseDeviceData(Long.parseLong(timestampStr)).thenRunAsync(() -> {});
-        startParseDeviceSecData(Long.parseLong(timestampStr)).thenRunAsync(() -> {});
+//        startParseDeviceData(Long.parseLong(timestampStr)).thenRunAsync(() -> {});
+//        startParseDeviceSecData(Long.parseLong(timestampStr)).thenRunAsync(() -> {});
     }
 
     public CompletableFuture<Void> startParseDeviceData(long timestamp) {

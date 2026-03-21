@@ -30,7 +30,7 @@ public class RiskDataTask {
 
     @RabbitListener(queues = "risk")
     public void riskDataListener(String timestampStr) {
-        startParseRiskData(Long.parseLong(timestampStr)).thenRunAsync(() -> {});
+//        startParseRiskData(Long.parseLong(timestampStr)).thenRunAsync(() -> {});
     }
 
     public CompletableFuture<Void> startParseRiskData(long timestamp) {

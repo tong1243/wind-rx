@@ -45,7 +45,7 @@ public class EventDataTask {
 
     @RabbitListener(queues = "event")
     public void eventDataListener(String timestampStr) {
-        storeEventTimestamp(Long.parseLong(timestampStr)).thenRunAsync(() -> {});
+//        storeEventTimestamp(Long.parseLong(timestampStr)).thenRunAsync(() -> {});
     }
 
     public CompletableFuture<Void> storeEventTimestamp(long timestamp) {

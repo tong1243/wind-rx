@@ -31,7 +31,7 @@ public class PostureDataTask {
 
     @RabbitListener(queues = "posture")
     public void postureDataListener(String timestampStr) {
-        startParsePostureData(Long.parseLong(timestampStr)).thenRunAsync(() -> {});
+//        startParsePostureData(Long.parseLong(timestampStr)).thenRunAsync(() -> {});
     }
 
     public CompletableFuture<Void> startParsePostureData(long timestamp) {

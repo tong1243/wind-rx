@@ -31,7 +31,7 @@ public class SectionDataTask {
 
     @RabbitListener(queues = "section")
     public void sectionDataListener(String timestampStr) {
-        startParseSectionData(Long.parseLong(timestampStr)).thenRunAsync(() -> {});
+//        startParseSectionData(Long.parseLong(timestampStr)).thenRunAsync(() -> {});
     }
 
     public CompletableFuture<Void> startParseSectionData(long timestamp) {
