@@ -60,7 +60,7 @@ public class TrajDataContext {
     private final  AtomicInteger waveNextId = new AtomicInteger(10000);
     // 时间戳与两方向当前车辆数记录(相同时间戳数据存取操作之间的偏移量为轨迹帧队列容量对应的600ms)
     @Getter
-    private final Map<Long, TrajCarCountModel> carNumRecordMap = new HashMap<>(128);
+    private final Map<Long, TrajCarCountModel> carNumRecordMap = new java.util.concurrent.ConcurrentHashMap<>(128);
     // 多设备去重阶段光纤数据黑名单(屏蔽从激光雷达匝道处出发的光纤数据)
     @Getter
     private final Map<Integer, Boolean> fiberModelMarkMap = new HashMap<>(128);

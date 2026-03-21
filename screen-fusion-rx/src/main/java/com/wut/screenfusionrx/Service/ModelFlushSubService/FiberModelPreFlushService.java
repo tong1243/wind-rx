@@ -53,8 +53,7 @@ public class FiberModelPreFlushService {
 //        MessagePrintUtil.printPreFlushStart();
         return CompletableFuture.runAsync(() -> {
             if (CollectionEmptyUtil.forList(fiberModelList)) {
-                
-                MessagePrintUtil.printException(new Exception("fiberModelList is empty"), "startFiberPreFlush");
+                MessagePrintUtil.printFiberException("fiberModelList");
                 return; }
             try {
 //                MessagePrintUtil.printFiberModelData(fiberModelList.toString());

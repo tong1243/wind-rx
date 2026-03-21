@@ -158,10 +158,16 @@ public List<Traj> collectFusionTraj(long timestamp) {
             // 轨迹数据和车辆统计信息都是(当前时间戳-600ms)下的数据
             try {
                 TrajCarCountModel trajCarCountModel = trajDataContext.getCarNumRecordMap().remove(timestamp);
+                int carToWH = trajCarCountModel == null
+                        ? trajDataContext.getCarNumCountToWH().get()
+                        : trajCarCountModel.getCarToWH();
+                int carToEZ = trajCarCountModel == null
+                        ? trajDataContext.getCarNumCountToEZ().get()
+                        : trajCarCountModel.getCarToEZ();
                 String trajFrameModelStr = objectMapper.writeValueAsString(new TrajFrameModel(
                         timestamp,
-                        trajCarCountModel.getCarToWH(),
-                        trajCarCountModel.getCarToEZ(),
+                        carToWH,
+                        carToEZ,
                         trajList
                 ));
                 kafkaTemplate.send(TOPIC_NAME_TRAJ, trajFrameModelStr);

@@ -65,13 +65,18 @@ public class TrajFusionTask {
                 // 首个时间戳(必定是最小时间戳)到达时,初始化轨迹融合时间戳并启动定时任务
                 // 其余时间戳到达时,CAS更改当前可进行轨迹融合任务的最新时间戳
                 if (!TRAJ_FUSION_TASK_FLAG) {
-                    TRAJ_FUSION_TASK_FLAG = true;
-                    while (!TRAJ_LATEST_TIME.compareAndSet(0L, timestamp)) {}
-                    TRAJ_FUSION_TIME = timestamp - FUSION_TIME_INTER;
-                    Thread.sleep(TRAJ_FUSION_WAIT_TIME);
-                    trajFusionTaskScheduler.scheduleAtFixedRate(this::startTrajFusion, Duration.ofMillis(FUSION_TIME_INTER));
+                    synchronized (TrajFusionTask.class) {
+                        if (!TRAJ_FUSION_TASK_FLAG) {
+                            TRAJ_FUSION_TASK_FLAG = true;
+                            TRAJ_LATEST_TIME.set(timestamp);
+                            TRAJ_FUSION_TIME = timestamp - FUSION_TIME_INTER;
+                            Thread.sleep(TRAJ_FUSION_WAIT_TIME);
+                            trajFusionTaskScheduler.scheduleAtFixedRate(this::startTrajFusion, Duration.ofMillis(FUSION_TIME_INTER));
+                            return;
+                        }
+                    }
                 }
-                while (!TRAJ_LATEST_TIME.compareAndSet(timestamp - FUSION_TIME_INTER, timestamp)) {}
+                TRAJ_LATEST_TIME.updateAndGet(current -> Math.max(current, timestamp));
             } catch (Exception e) { MessagePrintUtil.printException(e, "storeTrajTimestamp"); }
         }, fusionTaskTrajFusionTimerAsyncPool);
     }
