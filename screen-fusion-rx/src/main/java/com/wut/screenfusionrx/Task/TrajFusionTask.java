@@ -15,6 +15,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -33,7 +34,7 @@ public class TrajFusionTask {
     // 可进行轨迹融合任务的最新时间戳
     private static final AtomicLong TRAJ_LATEST_TIME = new AtomicLong(0L);
     // 轨迹融合任务时间戳初始化标志位
-    private static Boolean TRAJ_FUSION_TASK_FLAG = false;
+    private static final AtomicBoolean TRAJ_FUSION_TASK_FLAG = new AtomicBoolean(false);
     // 已处理完轨迹融合任务的最新时间戳
     private static Long TRAJ_FUSION_TIME = 0L;
     // 轨迹融合任务并发锁
@@ -49,7 +50,7 @@ public class TrajFusionTask {
 
     @PostConstruct
     public void initTrajFusionParam() {
-        TRAJ_FUSION_TASK_FLAG = false;
+        TRAJ_FUSION_TASK_FLAG.set(false);
         TRAJ_LATEST_TIME.set(0L);
         TRAJ_FUSION_TIME = 0L;
     }
@@ -64,17 +65,12 @@ public class TrajFusionTask {
             try {
                 // 首个时间戳(必定是最小时间戳)到达时,初始化轨迹融合时间戳并启动定时任务
                 // 其余时间戳到达时,CAS更改当前可进行轨迹融合任务的最新时间戳
-                if (!TRAJ_FUSION_TASK_FLAG) {
-                    synchronized (TrajFusionTask.class) {
-                        if (!TRAJ_FUSION_TASK_FLAG) {
-                            TRAJ_FUSION_TASK_FLAG = true;
-                            TRAJ_LATEST_TIME.set(timestamp);
-                            TRAJ_FUSION_TIME = timestamp - FUSION_TIME_INTER;
-                            Thread.sleep(TRAJ_FUSION_WAIT_TIME);
-                            trajFusionTaskScheduler.scheduleAtFixedRate(this::startTrajFusion, Duration.ofMillis(FUSION_TIME_INTER));
-                            return;
-                        }
-                    }
+                if (TRAJ_FUSION_TASK_FLAG.compareAndSet(false, true)) {
+                    TRAJ_LATEST_TIME.set(timestamp);
+                    TRAJ_FUSION_TIME = timestamp - FUSION_TIME_INTER;
+                    Thread.sleep(TRAJ_FUSION_WAIT_TIME);
+                    trajFusionTaskScheduler.scheduleAtFixedRate(this::startTrajFusion, Duration.ofMillis(FUSION_TIME_INTER));
+                    return;
                 }
                 TRAJ_LATEST_TIME.updateAndGet(current -> Math.max(current, timestamp));
             } catch (Exception e) { MessagePrintUtil.printException(e, "storeTrajTimestamp"); }
@@ -86,7 +82,11 @@ public class TrajFusionTask {
     public void startTrajFusion() {
         // 轨迹融合定时任务最快每200ms执行一次
         // 只要当前轨迹融合的时间戳小于可操作的最新时间戳(该时间戳由数据清洗模块更新),就进入执行轨迹融合,否则等待下一轮
-        if (TRAJ_FUSION_TIME < TRAJ_LATEST_TIME.get()) {
+        long latestTime = TRAJ_LATEST_TIME.get();
+        if (TRAJ_FUSION_TIME < latestTime) {
+            if (latestTime - TRAJ_FUSION_TIME > 5000L) {
+                TRAJ_FUSION_TIME = Math.max(0L, latestTime - FUSION_TIME_INTER);
+            }
             TRAJ_FUSION_TIME += FUSION_TIME_INTER;
             try {
                 TRAJ_FUSION_LOCK.lock();

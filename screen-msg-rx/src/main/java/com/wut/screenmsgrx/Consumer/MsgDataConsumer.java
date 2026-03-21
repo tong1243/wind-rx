@@ -8,7 +8,9 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import static com.wut.screencommonrx.Static.MsgModuleStatic.*;
 
@@ -27,11 +29,13 @@ public class MsgDataConsumer {
 
     @KafkaListener(topics = "fiber", groupId = "group-fiber")
     public void fiberDataListener(List<ConsumerRecord> records, Acknowledgment ack) {
+        List<CompletableFuture<Void>> futures = new ArrayList<>(records.size());
         for (ConsumerRecord record : records) {
             String fiberDataStr = record.value().toString();
-            fiberParseService.collectFiberData(fiberDataStr).thenRunAsync(() -> {
-//                MessagePrintUtil.printListenerReceive(TOPIC_NAME_FIBER, fiberDataStr);
-            });
+            futures.add(fiberParseService.collectFiberData(fiberDataStr));
+        }
+        if (!futures.isEmpty()) {
+            CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
         }
         ack.acknowledge();
     }

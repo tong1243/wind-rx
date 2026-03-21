@@ -16,8 +16,8 @@ import static com.wut.screencommonrx.Static.FusionModuleStatic.ASYNC_SERVICE_TIM
 
 @Component
 public class ModelFlushService {
-    private static final int FIBER_COLLECT_RETRY_COUNT = 10;
-    private static final long FIBER_COLLECT_RETRY_INTERVAL_MS = 200L;
+    private static final int FIBER_COLLECT_RETRY_COUNT = 30;
+    private static final long FIBER_COLLECT_RETRY_INTERVAL_MS = 500L;
 
     private final RedisModelDataService redisModelDataService;
     private final FiberModelPreFlushService fiberModelPreFlushService;
@@ -54,4 +54,3 @@ public class ModelFlushService {
         return flushModelTask.get();
     }
 }
-

@@ -9,9 +9,6 @@ import com.wut.screendbredisrx.Service.RedisModelDataService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
-import org.springframework.util.function.SupplierUtils;
-
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
@@ -33,20 +30,23 @@ public class FiberParseService {
     }
 
     public CompletableFuture<Void> collectFiberData(String fiberDataStr) {
-        return CompletableFuture.runAsync(() ->
-                Optional.ofNullable(SupplierUtils.resolve(() -> {
-                    try {
-                        return objectMapper.readValue(fiberDataStr, MsgSendDataModel.class);
-                    } catch (JsonProcessingException e) {
-                        return null;
+        return CompletableFuture
+                .supplyAsync(() -> parseVehicleModel(fiberDataStr), msgTaskAsyncPool)
+                .thenCompose(vehicleModel -> {
+                    if (vehicleModel == null) {
+                        return CompletableFuture.completedFuture(null);
                     }
-                })).ifPresent(msgSendDataModel -> {
-                    VehicleModel vehicleModel = toVehicleModel(msgSendDataModel);
-                    if (vehicleModel != null) {
-                        redisModelDataService.storeFiberModelData(vehicleModel).thenRunAsync(() -> {});
-                    }
-                }), msgTaskAsyncPool
-        );
+                    return redisModelDataService.storeFiberModelData(vehicleModel);
+                });
+    }
+
+    private VehicleModel parseVehicleModel(String fiberDataStr) {
+        try {
+            MsgSendDataModel msgSendDataModel = objectMapper.readValue(fiberDataStr, MsgSendDataModel.class);
+            return toVehicleModel(msgSendDataModel);
+        } catch (JsonProcessingException e) {
+            return null;
+        }
     }
 
     private VehicleModel toVehicleModel(MsgSendDataModel msgSendDataModel) {
