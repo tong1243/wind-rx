@@ -61,10 +61,10 @@ public class BatchCacheTimeContext {
     }
 
     public boolean updateTrajCacheTimestamp(long timestamp) {
-        if (timestamp - TRAJ_BATCH_TIME == BATCH_RECORD_TIME_COND) {
+        if (timestamp - TRAJ_BATCH_TIME >= BATCH_RECORD_TIME_COND) {
             try {
                 TRAJ_BATCH_LOCK.lock();
-                if (timestamp - TRAJ_BATCH_TIME == BATCH_RECORD_TIME_COND) {
+                if (timestamp - TRAJ_BATCH_TIME >= BATCH_RECORD_TIME_COND) {
                     TRAJ_BATCH_TIME = timestamp;
                     return true;
                 }
@@ -76,10 +76,10 @@ public class BatchCacheTimeContext {
     }
 
     public boolean updateEventCacheTimestamp(long timestamp) {
-        if (timestamp - EVENT_BATCH_TIME == EVENT_BATCH_RECORD_TIME_COND) {
+        if (timestamp - EVENT_BATCH_TIME >= EVENT_BATCH_RECORD_TIME_COND) {
             try {
                 EVENT_BATCH_LOCK.lock();
-                if (timestamp - EVENT_BATCH_TIME == EVENT_BATCH_RECORD_TIME_COND) {
+                if (timestamp - EVENT_BATCH_TIME >= EVENT_BATCH_RECORD_TIME_COND) {
                     EVENT_BATCH_TIME = timestamp;
                     return true;
                 }
