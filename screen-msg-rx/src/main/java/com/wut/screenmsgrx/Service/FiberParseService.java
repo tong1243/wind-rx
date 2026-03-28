@@ -5,7 +5,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wut.screencommonrx.Model.MsgSendDataModel;
 import com.wut.screencommonrx.Model.VehicleModel;
+import com.wut.screendbmysqlrx.Model.TravelReservation;
 import com.wut.screendbmysqlrx.Model.UcCarRealTime;
+import com.wut.screendbmysqlrx.Service.TravelReservationService;
 import com.wut.screendbmysqlrx.Service.UcCarRealTimeService;
 import com.wut.screendbredisrx.Service.RedisModelDataService;
 import org.slf4j.Logger;
@@ -25,22 +27,28 @@ import static com.wut.screencommonrx.Static.FusionModuleStatic.MODEL_TYPE_FIBER;
 @Component
 public class FiberParseService {
     private static final Logger log = LoggerFactory.getLogger(FiberParseService.class);
+    private static final long TRAVEL_RESERVATION_CACHE_TTL_MS = 1000L;
 
     @Qualifier("msgTaskAsyncPool")
     private final Executor msgTaskAsyncPool;
     private final RedisModelDataService redisModelDataService;
     private final UcCarRealTimeService ucCarRealTimeService;
+    private final TravelReservationService travelReservationService;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private volatile TravelReservation latestReservationCache;
+    private volatile long latestReservationCacheTimestamp;
 
     @Autowired
-    public FiberParseService(RedisModelDataService redisModelDataService, Executor msgTaskAsyncPool, UcCarRealTimeService ucCarRealTimeService) {
+    public FiberParseService(RedisModelDataService redisModelDataService, Executor msgTaskAsyncPool,
+                             UcCarRealTimeService ucCarRealTimeService, TravelReservationService travelReservationService) {
         this.redisModelDataService = redisModelDataService;
         this.msgTaskAsyncPool = msgTaskAsyncPool;
         this.ucCarRealTimeService = ucCarRealTimeService;
+        this.travelReservationService = travelReservationService;
     }
 
     FiberParseService(RedisModelDataService redisModelDataService, Executor msgTaskAsyncPool) {
-        this(redisModelDataService, msgTaskAsyncPool, null);
+        this(redisModelDataService, msgTaskAsyncPool, null, null);
     }
 
     public CompletableFuture<Void> collectFiberData(String fiberDataStr) {
@@ -153,15 +161,20 @@ public class FiberParseService {
             return null;
         }
 
+        TravelReservation latestReservation = getLatestTravelReservation();
+        String reservedPhone = latestReservation == null ? "" : latestReservation.getUserPhone();
+        String reservedCarLicense = latestReservation == null ? "" : latestReservation.getCarLicense();
+
         String userPhone = normalizePhone(firstNonBlank(
                 parseText(dataNode, "userPhone", ""),
                 parseText(dataNode, "user_phone", ""),
                 parseText(dataNode, "phone", ""),
-                parseText(dataNode, "mobile", "")
+                parseText(dataNode, "mobile", ""),
+                reservedPhone
         ));
         if (userPhone.isBlank()) {
-            log.warn("Skip uc_car_real_time insert: user phone missing, id={}", vehicleModel.getId());
-            return null;
+            userPhone = buildFallbackPhone(vehicleModel.getId());
+            log.warn("user phone missing, fallback userPhone={}, id={}", userPhone, vehicleModel.getId());
         }
 
         String carLicense = firstNonBlank(
@@ -170,12 +183,14 @@ public class FiberParseService {
                 parseText(dataNode, "plateNo", ""),
                 parseText(dataNode, "license", ""),
                 parseText(dataNode, "carId", ""),
+                reservedCarLicense,
                 vehicleModel.getCarId()
         );
         if (carLicense == null || carLicense.isBlank()) {
-            log.warn("Skip uc_car_real_time insert: car license missing, id={}", vehicleModel.getId());
-            return null;
+            carLicense = "UC-" + (vehicleModel.getId() == null ? "0" : vehicleModel.getId());
+            log.warn("car license missing, fallback carLicense={}, id={}", carLicense, vehicleModel.getId());
         }
+        carLicense = truncate(carLicense, 20);
 
         String currentPile = firstNonBlank(
                 parseText(dataNode, "currentPile", ""),
@@ -188,9 +203,9 @@ public class FiberParseService {
 
         String drivingDirection = resolveDrivingDirection(dataNode, vehicleModel.getRoadDirect());
         if (drivingDirection == null) {
-            log.warn("Skip uc_car_real_time insert: driving direction invalid, id={}, roadDirect={}",
-                    vehicleModel.getId(), vehicleModel.getRoadDirect());
-            return null;
+            drivingDirection = "hamimi_to_tuyugou";
+            log.warn("driving direction invalid, fallback direction={}, id={}, roadDirect={}",
+                    drivingDirection, vehicleModel.getId(), vehicleModel.getRoadDirect());
         }
 
         int laneNumber = normalizeLane(parseInt(dataNode, "Lane_ID",
@@ -243,6 +258,54 @@ public class FiberParseService {
             return digits;
         }
         return digits.substring(digits.length() - 11);
+    }
+
+    private String buildFallbackPhone(Integer id) {
+        String digits = id == null ? "0" : String.valueOf(Math.abs(id));
+        if (digits.length() >= 11) {
+            return digits.substring(digits.length() - 11);
+        }
+        return "0".repeat(11 - digits.length()) + digits;
+    }
+
+    private TravelReservation getLatestTravelReservation() {
+        if (travelReservationService == null) {
+            return null;
+        }
+        long now = System.currentTimeMillis();
+        TravelReservation cached = latestReservationCache;
+        if (cached != null && now - latestReservationCacheTimestamp <= TRAVEL_RESERVATION_CACHE_TTL_MS) {
+            return cached;
+        }
+
+        synchronized (this) {
+            now = System.currentTimeMillis();
+            cached = latestReservationCache;
+            if (cached != null && now - latestReservationCacheTimestamp <= TRAVEL_RESERVATION_CACHE_TTL_MS) {
+                return cached;
+            }
+            try {
+                TravelReservation latestReservation = travelReservationService.getLatestReservation();
+                if (latestReservation != null) {
+                    latestReservationCache = latestReservation;
+                    latestReservationCacheTimestamp = now;
+                }
+                return latestReservation;
+            } catch (Exception e) {
+                log.warn("query latest travel reservation failed", e);
+                return cached;
+            }
+        }
+    }
+
+    private String truncate(String value, int maxLen) {
+        if (value == null) {
+            return "";
+        }
+        if (value.length() <= maxLen) {
+            return value;
+        }
+        return value.substring(0, maxLen);
     }
 
     private int normalizeSpeedKmh(Double speedMs) {
