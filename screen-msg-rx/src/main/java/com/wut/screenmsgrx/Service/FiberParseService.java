@@ -101,13 +101,10 @@ public class FiberParseService {
         int road = parseInt(dataNode, "road", 0);
         double distanceAlongRoad = parseDouble(dataNode, "distanceAlongRoad", parseDouble(dataNode, "frenetX", parseDouble(dataNode, "fiberX", 0.0)));
         int type = parseInt(dataNode, "type", MODEL_TYPE_FIBER);
-        double speedKmh = parseDouble(dataNode, "speed", Double.NaN);
-        double speedX = parseDouble(dataNode, "speedX", Double.isNaN(speedKmh) ? 0.0 : speedKmh / 3.6);
+        double sourceSpeed = parseDouble(dataNode, "speed", parseDouble(dataNode, "speedX", 0.0));
+        double speedX = sourceSpeed;
         double speedY = parseDouble(dataNode, "speedY", 0.0);
-        double speed = parseDouble(dataNode, "speed", Math.abs(speedX));
-        if (!Double.isNaN(speedKmh)) {
-            speed = speedKmh / 3.6;
-        }
+        double speed = sourceSpeed;
 
         double yaw = parseDouble(dataNode, "yaw", parseDouble(dataNode, "headingAngle", 0.0));
         double headingAngle = Math.abs(yaw) <= (2 * Math.PI + 1e-6) ? Math.toDegrees(yaw) : yaw;
@@ -133,9 +130,9 @@ public class FiberParseService {
                 width,
                 distanceAlongRoad,
                 0.0,
-                Math.abs(speedX),
+                speedX,
                 Math.abs(speedY),
-                Math.abs(speed),
+                speed,
                 acceleration,
                 longitude,
                 latitude,
@@ -211,7 +208,8 @@ public class FiberParseService {
         int laneNumber = normalizeLane(parseInt(dataNode, "Lane_ID",
                 parseInt(dataNode, "laneId",
                         parseInt(dataNode, "lane", vehicleModel.getLane() == null ? 1 : vehicleModel.getLane()))));
-        int realSpeed = normalizeSpeedKmh(vehicleModel.getSpeed());
+        double rawSpeed = parseDouble(dataNode, "speed", vehicleModel.getSpeed() == null ? 0.0 : vehicleModel.getSpeed());
+        int realSpeed = normalizeSpeed(rawSpeed);
 
         return new UcCarRealTime(
                 null,
@@ -308,12 +306,12 @@ public class FiberParseService {
         return value.substring(0, maxLen);
     }
 
-    private int normalizeSpeedKmh(Double speedMs) {
-        if (speedMs == null || speedMs < 0) {
+    private int normalizeSpeed(Double speed) {
+        if (speed == null || speed < 0) {
             return 0;
         }
-        int speedKmh = (int) Math.round(speedMs * 3.6);
-        return Math.max(0, Math.min(speedKmh, 255));
+        int speedValue = (int) Math.round(speed);
+        return Math.max(0, Math.min(speedValue, 255));
     }
 
     private int normalizeLane(int laneNumber) {
