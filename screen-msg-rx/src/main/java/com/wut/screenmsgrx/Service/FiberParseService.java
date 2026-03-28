@@ -5,10 +5,16 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wut.screencommonrx.Model.MsgSendDataModel;
 import com.wut.screencommonrx.Model.VehicleModel;
+import com.wut.screendbmysqlrx.Model.UcCarRealTime;
+import com.wut.screendbmysqlrx.Service.UcCarRealTimeService;
 import com.wut.screendbredisrx.Service.RedisModelDataService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
+
+import java.time.LocalDateTime;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
@@ -18,42 +24,67 @@ import static com.wut.screencommonrx.Static.FusionModuleStatic.MODEL_TYPE_FIBER;
 
 @Component
 public class FiberParseService {
+    private static final Logger log = LoggerFactory.getLogger(FiberParseService.class);
+
     @Qualifier("msgTaskAsyncPool")
     private final Executor msgTaskAsyncPool;
     private final RedisModelDataService redisModelDataService;
+    private final UcCarRealTimeService ucCarRealTimeService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired
-    public FiberParseService(RedisModelDataService redisModelDataService, Executor msgTaskAsyncPool) {
+    public FiberParseService(RedisModelDataService redisModelDataService, Executor msgTaskAsyncPool, UcCarRealTimeService ucCarRealTimeService) {
         this.redisModelDataService = redisModelDataService;
         this.msgTaskAsyncPool = msgTaskAsyncPool;
+        this.ucCarRealTimeService = ucCarRealTimeService;
+    }
+
+    FiberParseService(RedisModelDataService redisModelDataService, Executor msgTaskAsyncPool) {
+        this(redisModelDataService, msgTaskAsyncPool, null);
     }
 
     public CompletableFuture<Void> collectFiberData(String fiberDataStr) {
         return CompletableFuture
-                .supplyAsync(() -> parseVehicleModel(fiberDataStr), msgTaskAsyncPool)
-                .thenCompose(vehicleModel -> {
-                    if (vehicleModel == null) {
+                .supplyAsync(() -> parsePayload(fiberDataStr), msgTaskAsyncPool)
+                .thenCompose(parseResult -> {
+                    if (parseResult == null || parseResult.vehicleModel() == null) {
                         return CompletableFuture.completedFuture(null);
                     }
-                    return redisModelDataService.storeFiberModelData(vehicleModel);
+                    CompletableFuture<Void> storeFiberTask = redisModelDataService.storeFiberModelData(parseResult.vehicleModel());
+                    if (parseResult.ucCarRealTime() == null || ucCarRealTimeService == null) {
+                        return storeFiberTask;
+                    }
+                    return storeFiberTask.thenRunAsync(() -> {
+                        try {
+                            ucCarRealTimeService.storeOne(parseResult.ucCarRealTime());
+                        } catch (Exception e) {
+                            log.error("Store uc_car_real_time failed, id={}, carLicense={}",
+                                    parseResult.vehicleModel().getId(), parseResult.ucCarRealTime().getCarLicense(), e);
+                        }
+                    }, msgTaskAsyncPool);
                 });
     }
 
-    private VehicleModel parseVehicleModel(String fiberDataStr) {
+    private ParseResult parsePayload(String fiberDataStr) {
         try {
             MsgSendDataModel msgSendDataModel = objectMapper.readValue(fiberDataStr, MsgSendDataModel.class);
-            return toVehicleModel(msgSendDataModel);
+            return toParseResult(msgSendDataModel);
         } catch (JsonProcessingException e) {
             return null;
         }
     }
 
-    private VehicleModel toVehicleModel(MsgSendDataModel msgSendDataModel) {
+    private ParseResult toParseResult(MsgSendDataModel msgSendDataModel) {
         JsonNode dataNode = objectMapper.valueToTree(msgSendDataModel.getData());
         if (dataNode == null || dataNode.isNull() || dataNode.isMissingNode()) {
             return null;
         }
+        VehicleModel vehicleModel = toVehicleModel(msgSendDataModel, dataNode);
+        UcCarRealTime ucCarRealTime = toUcCarRealTime(dataNode, vehicleModel);
+        return new ParseResult(vehicleModel, ucCarRealTime);
+    }
+
+    private VehicleModel toVehicleModel(MsgSendDataModel msgSendDataModel, JsonNode dataNode) {
 
         long timestamp = parseLong(dataNode, "timestamp", msgSendDataModel.getTimestamp());
         int id = parseInt(dataNode, "id", 0);
@@ -117,6 +148,137 @@ public class FiberParseService {
         );
     }
 
+    private UcCarRealTime toUcCarRealTime(JsonNode dataNode, VehicleModel vehicleModel) {
+        if (vehicleModel == null || vehicleModel.getType() == null || vehicleModel.getType() != 1) {
+            return null;
+        }
+
+        String userPhone = normalizePhone(firstNonBlank(
+                parseText(dataNode, "userPhone", ""),
+                parseText(dataNode, "user_phone", ""),
+                parseText(dataNode, "phone", ""),
+                parseText(dataNode, "mobile", "")
+        ));
+        if (userPhone.isBlank()) {
+            log.warn("Skip uc_car_real_time insert: user phone missing, id={}", vehicleModel.getId());
+            return null;
+        }
+
+        String carLicense = firstNonBlank(
+                parseText(dataNode, "carLicense", ""),
+                parseText(dataNode, "car_license", ""),
+                parseText(dataNode, "plateNo", ""),
+                parseText(dataNode, "license", ""),
+                parseText(dataNode, "carId", ""),
+                vehicleModel.getCarId()
+        );
+        if (carLicense == null || carLicense.isBlank()) {
+            log.warn("Skip uc_car_real_time insert: car license missing, id={}", vehicleModel.getId());
+            return null;
+        }
+
+        String currentPile = firstNonBlank(
+                parseText(dataNode, "currentPile", ""),
+                parseText(dataNode, "current_pile", ""),
+                parseText(dataNode, "pile", ""),
+                parseText(dataNode, "pileNo", ""),
+                parseText(dataNode, "stakeNo", ""),
+                formatPile(vehicleModel.getFrenetX())
+        );
+
+        String drivingDirection = resolveDrivingDirection(dataNode, vehicleModel.getRoadDirect());
+        if (drivingDirection == null) {
+            log.warn("Skip uc_car_real_time insert: driving direction invalid, id={}, roadDirect={}",
+                    vehicleModel.getId(), vehicleModel.getRoadDirect());
+            return null;
+        }
+
+        int laneNumber = normalizeLane(parseInt(dataNode, "Lane_ID",
+                parseInt(dataNode, "laneId",
+                        parseInt(dataNode, "lane", vehicleModel.getLane() == null ? 1 : vehicleModel.getLane()))));
+        int realSpeed = normalizeSpeedKmh(vehicleModel.getSpeed());
+
+        return new UcCarRealTime(
+                null,
+                userPhone,
+                carLicense,
+                currentPile,
+                realSpeed,
+                drivingDirection,
+                laneNumber,
+                LocalDateTime.now()
+        );
+    }
+
+    private String resolveDrivingDirection(JsonNode dataNode, String roadDirect) {
+        String explicitDirection = firstNonBlank(
+                parseText(dataNode, "driving_direction", ""),
+                parseText(dataNode, "drivingDirection", "")
+        );
+        if ("hamimi_to_tuyugou".equalsIgnoreCase(explicitDirection)) {
+            return "hamimi_to_tuyugou";
+        }
+        if ("tuyugou_to_hamimi".equalsIgnoreCase(explicitDirection)) {
+            return "tuyugou_to_hamimi";
+        }
+
+        int direction = parseInt(dataNode, "direction",
+                parseInt(dataNode, "roadDirect",
+                        parseInt(roadDirect, 0)));
+        if (direction == 1) {
+            return "hamimi_to_tuyugou";
+        }
+        if (direction == 2) {
+            return "tuyugou_to_hamimi";
+        }
+        return null;
+    }
+
+    private String normalizePhone(String phone) {
+        if (phone == null || phone.isBlank()) {
+            return "";
+        }
+        String digits = phone.replaceAll("\\D", "");
+        if (digits.length() <= 11) {
+            return digits;
+        }
+        return digits.substring(digits.length() - 11);
+    }
+
+    private int normalizeSpeedKmh(Double speedMs) {
+        if (speedMs == null || speedMs < 0) {
+            return 0;
+        }
+        int speedKmh = (int) Math.round(speedMs * 3.6);
+        return Math.max(0, Math.min(speedKmh, 255));
+    }
+
+    private int normalizeLane(int laneNumber) {
+        if (laneNumber < 1) {
+            return 1;
+        }
+        return Math.min(laneNumber, 4);
+    }
+
+    private String formatPile(Double distanceMeter) {
+        if (distanceMeter == null || distanceMeter < 0) {
+            return "k0+000";
+        }
+        long meter = Math.round(distanceMeter);
+        long kilo = meter / 1000L;
+        long rest = meter % 1000L;
+        return "k" + kilo + "+" + String.format("%03d", rest);
+    }
+
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return "";
+    }
+
     private double mapModelToLength(int model) {
         return switch (model) {
             case 2 -> 9.5;
@@ -141,8 +303,12 @@ public class FiberParseService {
         if (fieldNode.isMissingNode() || fieldNode.isNull()) {
             return defaultValue;
         }
+        return parseInt(fieldNode.asText(), defaultValue);
+    }
+
+    private int parseInt(String value, int defaultValue) {
         try {
-            return (int) Double.parseDouble(fieldNode.asText());
+            return (int) Double.parseDouble(value);
         } catch (Exception e) {
             return defaultValue;
         }
@@ -188,5 +354,8 @@ public class FiberParseService {
         }
         String value = fieldNode.asText();
         return value == null || value.isBlank() ? defaultValue : value;
+    }
+
+    private record ParseResult(VehicleModel vehicleModel, UcCarRealTime ucCarRealTime) {
     }
 }
