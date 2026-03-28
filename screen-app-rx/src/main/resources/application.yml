@@ -64,3 +64,7 @@ logging:
 
 mybatis-plus:
   mapperLocations: ["classpath*:/Mapper/*.xml"]
+
+msg:
+  dynamic-table-retention-days: 7
+  dynamic-table-clean-cron: "0 30 3 * * ?"

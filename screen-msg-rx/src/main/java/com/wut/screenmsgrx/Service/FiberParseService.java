@@ -7,7 +7,9 @@ import com.wut.screencommonrx.Model.MsgSendDataModel;
 import com.wut.screencommonrx.Model.VehicleModel;
 import com.wut.screendbmysqlrx.Model.TravelReservation;
 import com.wut.screendbmysqlrx.Model.UcCarRealTime;
+import com.wut.screendbmysqlrx.Model.UcCarRealTimeCurrent;
 import com.wut.screendbmysqlrx.Service.TravelReservationService;
+import com.wut.screendbmysqlrx.Service.UcCarRealTimeCurrentService;
 import com.wut.screendbmysqlrx.Service.UcCarRealTimeService;
 import com.wut.screendbredisrx.Service.RedisModelDataService;
 import org.slf4j.Logger;
@@ -33,6 +35,7 @@ public class FiberParseService {
     private final Executor msgTaskAsyncPool;
     private final RedisModelDataService redisModelDataService;
     private final UcCarRealTimeService ucCarRealTimeService;
+    private final UcCarRealTimeCurrentService ucCarRealTimeCurrentService;
     private final TravelReservationService travelReservationService;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private volatile TravelReservation latestReservationCache;
@@ -40,15 +43,18 @@ public class FiberParseService {
 
     @Autowired
     public FiberParseService(RedisModelDataService redisModelDataService, Executor msgTaskAsyncPool,
-                             UcCarRealTimeService ucCarRealTimeService, TravelReservationService travelReservationService) {
+                             UcCarRealTimeService ucCarRealTimeService,
+                             UcCarRealTimeCurrentService ucCarRealTimeCurrentService,
+                             TravelReservationService travelReservationService) {
         this.redisModelDataService = redisModelDataService;
         this.msgTaskAsyncPool = msgTaskAsyncPool;
         this.ucCarRealTimeService = ucCarRealTimeService;
+        this.ucCarRealTimeCurrentService = ucCarRealTimeCurrentService;
         this.travelReservationService = travelReservationService;
     }
 
     FiberParseService(RedisModelDataService redisModelDataService, Executor msgTaskAsyncPool) {
-        this(redisModelDataService, msgTaskAsyncPool, null, null);
+        this(redisModelDataService, msgTaskAsyncPool, null, null, null);
     }
 
     public CompletableFuture<Void> collectFiberData(String fiberDataStr) {
@@ -59,18 +65,49 @@ public class FiberParseService {
                         return CompletableFuture.completedFuture(null);
                     }
                     CompletableFuture<Void> storeFiberTask = redisModelDataService.storeFiberModelData(parseResult.vehicleModel());
-                    if (parseResult.ucCarRealTime() == null || ucCarRealTimeService == null) {
+                    if (parseResult.ucCarRealTime() == null) {
+                        return storeFiberTask;
+                    }
+                    if (ucCarRealTimeService == null && ucCarRealTimeCurrentService == null) {
                         return storeFiberTask;
                     }
                     return storeFiberTask.thenRunAsync(() -> {
-                        try {
-                            ucCarRealTimeService.storeOne(parseResult.ucCarRealTime());
-                        } catch (Exception e) {
-                            log.error("Store uc_car_real_time failed, id={}, carLicense={}",
-                                    parseResult.vehicleModel().getId(), parseResult.ucCarRealTime().getCarLicense(), e);
-                        }
+                        persistUcCarRealTime(parseResult.vehicleModel(), parseResult.ucCarRealTime());
                     }, msgTaskAsyncPool);
                 });
+    }
+
+    private void persistUcCarRealTime(VehicleModel vehicleModel, UcCarRealTime ucCarRealTime) {
+        if (ucCarRealTimeService != null) {
+            try {
+                ucCarRealTimeService.storeOne(ucCarRealTime);
+            } catch (Exception e) {
+                log.error("Store uc_car_real_time failed, id={}, carLicense={}",
+                        vehicleModel.getId(), ucCarRealTime.getCarLicense(), e);
+            }
+        }
+
+        if (ucCarRealTimeCurrentService != null) {
+            try {
+                ucCarRealTimeCurrentService.upsertOne(toCurrentRecord(ucCarRealTime));
+            } catch (Exception e) {
+                log.error("Upsert uc_car_real_time_current failed, id={}, carLicense={}",
+                        vehicleModel.getId(), ucCarRealTime.getCarLicense(), e);
+            }
+        }
+    }
+
+    private UcCarRealTimeCurrent toCurrentRecord(UcCarRealTime ucCarRealTime) {
+        return new UcCarRealTimeCurrent(
+                null,
+                ucCarRealTime.getUserPhone(),
+                ucCarRealTime.getCarLicense(),
+                ucCarRealTime.getCurrentPile(),
+                ucCarRealTime.getRealSpeed(),
+                ucCarRealTime.getDrivingDirection(),
+                ucCarRealTime.getLaneNumber(),
+                ucCarRealTime.getReportTime()
+        );
     }
 
     private ParseResult parsePayload(String fiberDataStr) {
