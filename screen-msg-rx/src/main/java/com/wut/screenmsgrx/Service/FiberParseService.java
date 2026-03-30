@@ -144,7 +144,7 @@ public class FiberParseService {
         double speed = sourceSpeed;
 
         double yaw = parseDouble(dataNode, "yaw", parseDouble(dataNode, "headingAngle", 0.0));
-        double headingAngle = Math.abs(yaw) <= (2 * Math.PI + 1e-6) ? Math.toDegrees(yaw) : yaw;
+        double headingAngle = parseDouble(dataNode, "headingAngle", 0.0);
         double acceleration = parseDouble(dataNode, "acc", parseDouble(dataNode, "acceleration", 0.0));
 
         int model = parseInt(dataNode, "model", 1);
