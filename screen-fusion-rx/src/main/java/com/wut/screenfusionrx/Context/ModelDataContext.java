@@ -3,12 +3,10 @@ package com.wut.screenfusionrx.Context;
 import com.google.common.collect.Range;
 import com.wut.screencommonrx.Model.ModelConvertData.Mercator;
 import com.wut.screencommonrx.Model.VehicleModel;
-import com.wut.screencommonrx.Util.MessagePrintUtil;
 import com.wut.screendbmongorx.Document.Point;
 import com.wut.screendbmongorx.Repository.*;
 import com.wut.screendbmongorx.Util.MongoModelTransformUtil;
 import com.wut.screendbmysqlrx.Model.Rotation;
-import com.wut.screendbmysqlrx.Service.RotationService;
 import com.wut.screenfusionrx.Model.RotationMatrixModel;
 import jakarta.annotation.PostConstruct;
 import lombok.Getter;
@@ -35,19 +33,19 @@ public class ModelDataContext {
     private final PointsToWHzaRepository pointsToWHzaRepository;
     private final PointsToEZzaRepository pointsToEZzaRepository;
     private final VehicleModelDocuRepository vehicleModelDocuRepository;
-    private final RotationService rotationService;
+//    private final RotationService rotationService;
     // 微波雷达设备静态表
     @Getter
     private final Map<String, RotationMatrixModel> waveRotationMap = new HashMap<>();
 
     @Autowired
-    public ModelDataContext(Executor fusionTaskModelFlushAsyncPool, RotationService rotationService, PointsToWHRepository pointsToWHRepository, PointsToEZRepository pointsToEZRepository, PointsToWHzaRepository pointsToWHzaRepository, PointsToEZzaRepository pointsToEZzaRepository, VehicleModelDocuRepository vehicleModelDocuRepository) {
+    public ModelDataContext(Executor fusionTaskModelFlushAsyncPool, PointsToWHRepository pointsToWHRepository, PointsToEZRepository pointsToEZRepository, PointsToWHzaRepository pointsToWHzaRepository, PointsToEZzaRepository pointsToEZzaRepository, VehicleModelDocuRepository vehicleModelDocuRepository) {
         this.fusionTaskModelFlushAsyncPool = fusionTaskModelFlushAsyncPool;
         this.pointsToWHRepository = pointsToWHRepository;
         this.pointsToEZRepository = pointsToEZRepository;
         this.pointsToWHzaRepository = pointsToWHzaRepository;
         this.pointsToEZzaRepository = pointsToEZzaRepository;
-        this.rotationService = rotationService;
+//        this.rotationService = rotationService;
         this.vehicleModelDocuRepository = vehicleModelDocuRepository;
     }
 
@@ -57,29 +55,29 @@ public class ModelDataContext {
 //        resetVehicleModelDocu().thenRunAsync(() -> {});
     }
 
-    public CompletableFuture<Void> updateWaveRotation() {
-        return CompletableFuture.runAsync(() -> {
-            waveRotationMap.clear();
-            AtomicInteger suffix = new AtomicInteger(WAVE_ID_SUFFIX_START);
-            List<Rotation> rotationList = rotationService.getAllRotation();
-            rotationList.stream().forEach(rotation -> {
-                waveRotationMap.put(rotation.getIp(), new RotationMatrixModel(
-                        rotation.getCenterX(),
-                        rotation.getCenterY(),
-                        rotation.getOffsetX(),
-                        rotation.getOffsetY(),
-                        rotation.getRoadDirection(),
-                        rotation.getDeviceDirection(),
-                        rotation.getStatus(),
-                        rotation.getSid(),
-                        Range.closed(rotation.getMinX(), rotation.getMaxX()),
-                        Math.cos(rotation.getAngle()),
-                        Math.sin(rotation.getAngle()),
-                        suffix.getAndAdd(WAVE_ID_SUFFIX_STEP)
-                ));
-            });
-        }, fusionTaskModelFlushAsyncPool);
-    }
+//    public CompletableFuture<Void> updateWaveRotation() {
+//        return CompletableFuture.runAsync(() -> {
+//            waveRotationMap.clear();
+//            AtomicInteger suffix = new AtomicInteger(WAVE_ID_SUFFIX_START);
+//            List<Rotation> rotationList = rotationService.getAllRotation();
+//            rotationList.stream().forEach(rotation -> {
+//                waveRotationMap.put(rotation.getIp(), new RotationMatrixModel(
+//                        rotation.getCenterX(),
+//                        rotation.getCenterY(),
+//                        rotation.getOffsetX(),
+//                        rotation.getOffsetY(),
+//                        rotation.getRoadDirection(),
+//                        rotation.getDeviceDirection(),
+//                        rotation.getStatus(),
+//                        rotation.getSid(),
+//                        Range.closed(rotation.getMinX(), rotation.getMaxX()),
+//                        Math.cos(rotation.getAngle()),
+//                        Math.sin(rotation.getAngle()),
+//                        suffix.getAndAdd(WAVE_ID_SUFFIX_STEP)
+//                ));
+//            });
+//        }, fusionTaskModelFlushAsyncPool);
+//    }
 
     public CompletableFuture<Void> resetVehicleModelDocu() {
         return CompletableFuture.runAsync(vehicleModelDocuRepository::deleteAll, fusionTaskModelFlushAsyncPool);

@@ -6,7 +6,6 @@ import com.wut.screencommonrx.Util.DataParamParseUtil;
 import com.wut.screencommonrx.Util.MessagePrintUtil;
 import com.wut.screendbmysqlrx.Model.License;
 import com.wut.screendbmysqlrx.Model.Traj;
-import com.wut.screendbmysqlrx.Service.LicenseService;
 import com.wut.screenfusionrx.Model.TrajCarCountModel;
 import com.wut.screenfusionrx.Model.TrajMatchMarkModel;
 import com.wut.screenfusionrx.Util.TrajModelParamUtil;
@@ -29,7 +28,7 @@ import static com.wut.screencommonrx.Static.FusionModuleStatic.*;
 public class TrajDataContext {
     @Qualifier("fusionTaskTrajFusionAsyncPool")
     private final Executor fusionTaskTrajFusionAsyncPool;
-    private final LicenseService licenseService;
+//    private final LicenseServicervice licenseService;
     // 轨迹时间戳偏移量达标标志位
     private static Boolean TIME_FLAG = false;
     // 轨迹起始记录时间戳(用于计算轨迹时间戳偏移量)
@@ -85,9 +84,9 @@ public class TrajDataContext {
     private final Map<Integer, Long> trajRawIdRecordMap = new HashMap<>(128);
 
     @Autowired
-    public TrajDataContext(Executor fusionTaskTrajFusionAsyncPool, LicenseService licenseService) {
+    public TrajDataContext(Executor fusionTaskTrajFusionAsyncPool) {
         this.fusionTaskTrajFusionAsyncPool = fusionTaskTrajFusionAsyncPool;
-        this.licenseService = licenseService;
+//        this.licenseService = licenseService;
     }
 
     @PostConstruct
@@ -111,8 +110,8 @@ public class TrajDataContext {
     // 初始化填充车辆牌照绑定设备静态表
     public CompletableFuture<Void> initTrajCarPlateLicenseMap() {
         return CompletableFuture.runAsync(() -> {
-            trajCarPlateLicenseMap.clear();
-            trajCarPlateLicenseMap.putAll(licenseService.getAllLicense().stream().collect(Collectors.toMap(License::getDeviceCode, license -> license)));
+//            trajCarPlateLicenseMap.clear();
+//            trajCarPlateLicenseMap.putAll(licenseService.getAllLicense().stream().collect(Collectors.toMap(License::getDeviceCode, license -> license)));
         }, fusionTaskTrajFusionAsyncPool);
     }
 

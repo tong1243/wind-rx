@@ -4,35 +4,11 @@ import java.util.List;
 
 public class DbModuleStatic {
     public static final List<String> DYNAMIC_TABLE_NAMES = List.of(
-            "carevent",
-            "section",
-            "traj_near_real",
-            "posture",
-            "fibermetric",
-            "radarmetric",
-            "fibersecmetric",
-            "radarsecmetric",
-            "radarallsecmetric",
-            "parameters",
-            "bottleneck_area_state",
-            "tunnel_risk",
-            "risk_event"
+            "traj_near_real"
     );
 
     public static final String TABLE_SUFFIX_SEPARATOR  = "_";
-    public static final String TABLE_EVENT_DDL_PREFIX = "carevent" + TABLE_SUFFIX_SEPARATOR;
-    public static final String TABLE_SECTION_DDL_PREFIX = "section" + TABLE_SUFFIX_SEPARATOR;
     public static final String TABLE_TRAJ_DDL_PREFIX = "traj_near_real" + TABLE_SUFFIX_SEPARATOR;
-    public static final String TABLE_POSTURE_DDL_PREFIX = "posture" + TABLE_SUFFIX_SEPARATOR;
-    public static final String TABLE_FIBER_METRIC_DDL_PREFIX = "fibermetric" + TABLE_SUFFIX_SEPARATOR;
-    public static final String TABLE_RADAR_METRIC_DDL_PREFIX = "radarmetric" + TABLE_SUFFIX_SEPARATOR;
-    public static final String TABLE_FIBER_SEC_METRIC_DDL_PREFIX = "fibersecmetric" + TABLE_SUFFIX_SEPARATOR;
-    public static final String TABLE_RADAR_SEC_METRIC_DDL_PREFIX = "radarsecmetric" + TABLE_SUFFIX_SEPARATOR;
-    public static final String TABLE_RADAR_ALL_SEC_METRIC_DDL_PREFIX = "radarallsecmetric" + TABLE_SUFFIX_SEPARATOR;
-    public static final String TABLE_PARAMETERS_DDL_PREFIX = "parameters" + TABLE_SUFFIX_SEPARATOR;
-    public static final String TABLE_BOTTLE_DDL_PREFIX = "bottleneck_area_state" + TABLE_SUFFIX_SEPARATOR;
-    public static final String TABLE_RISK_DDL_PREFIX = "tunnel_risk" + TABLE_SUFFIX_SEPARATOR;
-    public static final String TABLE_RISK_EVENT_DDL_PREFIX = "risk_event" + TABLE_SUFFIX_SEPARATOR;
 
 
     public static final String TABLE_SUFFIX_KEY = "timestamp";

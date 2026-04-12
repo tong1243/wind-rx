@@ -18,55 +18,31 @@ public class DynamicStateService {
     @Qualifier("msgTimestampTaskAsyncPool")
     private final Executor msgTimestampTaskAsyncPool;
     private final TrajService trajService;
-    private final SectionService sectionService;
-    private final CarEventService carEventService;
-    private final PostureService postureService;
-    private final FiberMetricService fiberMetricService;
-    private final RadarMetricService radarMetricService;
-    private final FiberSecMetricService fiberSecMetricService;
-    private final RadarSecMetricService radarSecMetricService;
-    private final RadarAllSecMetricService radarAllSecMetricService;
-    private final ParametersService parametersService;
-    private final BottleneckAreaStateService bottleneckAreaStateService;
-    private final TunnelRiskService tunnelRiskService;
-    private final RiskEventService riskEventService;
     private final RabbitTemplate rabbitTemplate;
 
     @Autowired
-    public DynamicStateService(Executor msgTimestampTaskAsyncPool, TrajService trajService, SectionService sectionService, CarEventService carEventService, PostureService postureService, FiberMetricService fiberMetricService, RadarMetricService radarMetricService, FiberSecMetricService fiberSecMetricService, RadarSecMetricService radarSecMetricService, RadarAllSecMetricService radarAllSecMetricService, ParametersService parametersService, BottleneckAreaStateService bottleneckAreaStateService, TunnelRiskService tunnelRiskService, RiskEventService riskEventService, RabbitTemplate rabbitTemplate) {
+    public DynamicStateService(Executor msgTimestampTaskAsyncPool, TrajService trajService, RabbitTemplate rabbitTemplate) {
         this.msgTimestampTaskAsyncPool = msgTimestampTaskAsyncPool;
         this.trajService = trajService;
-        this.sectionService = sectionService;
-        this.carEventService = carEventService;
-        this.postureService = postureService;
-        this.fiberMetricService = fiberMetricService;
-        this.radarMetricService = radarMetricService;
-        this.fiberSecMetricService = fiberSecMetricService;
-        this.radarSecMetricService = radarSecMetricService;
-        this.radarAllSecMetricService = radarAllSecMetricService;
-        this.parametersService = parametersService;
-        this.bottleneckAreaStateService = bottleneckAreaStateService;
-        this.tunnelRiskService = tunnelRiskService;
-        this.riskEventService = riskEventService;
         this.rabbitTemplate = rabbitTemplate;
     }
 
     // 初次接收发送端时间戳时,执行初始化表结构操作
     public CompletableFuture<Void> initDynamicTable(String time) {
         return CompletableFuture.allOf(
-                initTrajTable(time),
-                initSectionTable(time),
-                initEventTable(time),
-                initPostureTable(time),
-                initFiberMetricTable(time),
-                initRadarMetricTable(time),
-                initFiberSecMetricTable(time),
-                initRadarSecMetricTable(time),
-                initRadarAllSecMetricTable(time),
-                initParametersTable(time),
-                initBottleneckAreaStateTable(time),
-                initTnnelRiskTable(time),
-                initRiskEventTable(time)
+                initTrajTable(time)
+//                initSectionTable(time),
+//                initEventTable(time),
+//                initPostureTable(time),
+//                initFiberMetricTable(time),
+//                initRadarMetricTable(time),
+//                initFiberSecMetricTable(time),
+//                initRadarSecMetricTable(time),
+//                initRadarAllSecMetricTable(time),
+//                initParametersTable(time),
+//                initBottleneckAreaStateTable(time),
+//                initTnnelRiskTable(time),
+//                initRiskEventTable(time)
         );
     }
 
@@ -86,89 +62,89 @@ public class DynamicStateService {
         }, msgTimestampTaskAsyncPool);
     }
 
-    public CompletableFuture<Void> initSectionTable(String time) {
-        return CompletableFuture.runAsync(() -> {
-            sectionService.dropTable(time);
-            sectionService.createTable(time);
-        }, msgTimestampTaskAsyncPool);
-    }
-
-    public CompletableFuture<Void> initEventTable(String time) {
-        return CompletableFuture.runAsync(() -> {
-            carEventService.dropTable(time);
-            carEventService.createTable(time);
-        }, msgTimestampTaskAsyncPool);
-    }
-
-    public CompletableFuture<Void> initPostureTable(String time) {
-        return CompletableFuture.runAsync(() -> {
-            postureService.dropTable(time);
-            postureService.createTable(time);
-        }, msgTimestampTaskAsyncPool);
-    }
-
-    public CompletableFuture<Void> initFiberMetricTable(String time) {
-        return CompletableFuture.runAsync(() -> {
-            fiberMetricService.dropTable(time);
-            fiberMetricService.createTable(time);
-        }, msgTimestampTaskAsyncPool);
-    }
-
-    public CompletableFuture<Void> initRadarMetricTable(String time) {
-        return CompletableFuture.runAsync(() -> {
-            radarMetricService.dropTable(time);
-            radarMetricService.createTable(time);
-        }, msgTimestampTaskAsyncPool);
-    }
-
-    public CompletableFuture<Void> initFiberSecMetricTable(String time) {
-        return CompletableFuture.runAsync(() -> {
-            fiberSecMetricService.dropTable(time);
-            fiberSecMetricService.createTable(time);
-        }, msgTimestampTaskAsyncPool);
-    }
-
-    public CompletableFuture<Void> initRadarSecMetricTable(String time) {
-        return CompletableFuture.runAsync(() -> {
-            radarSecMetricService.dropTable(time);
-            radarSecMetricService.createTable(time);
-        }, msgTimestampTaskAsyncPool);
-    }
-
-    public CompletableFuture<Void> initRadarAllSecMetricTable(String time) {
-        return CompletableFuture.runAsync(() -> {
-            radarAllSecMetricService.dropTable(time);
-            radarAllSecMetricService.createTable(time);
-        }, msgTimestampTaskAsyncPool);
-    }
-//    private CompletableFuture<Void> initRiskTable(String time) {
+//    public CompletableFuture<Void> initSectionTable(String time) {
 //        return CompletableFuture.runAsync(() -> {
-//            riskService.dropTable(time);
-//            riskService.createTable(time);
+//            sectionService.dropTable(time);
+//            sectionService.createTable(time);
 //        }, msgTimestampTaskAsyncPool);
 //    }
-private CompletableFuture<Void> initParametersTable(String time) {
-    return CompletableFuture.runAsync(() -> {
-        parametersService.dropTable(time);
-        parametersService.createTable(time);
-    }, msgTimestampTaskAsyncPool);
-}
-    private CompletableFuture<Void> initBottleneckAreaStateTable(String time) {
-        return CompletableFuture.runAsync(() -> {
-            bottleneckAreaStateService.dropTable(time);
-            bottleneckAreaStateService.createTable(time);
-        }, msgTimestampTaskAsyncPool);
-    }
-    private CompletableFuture<Void> initTnnelRiskTable(String time) {
-        return CompletableFuture.runAsync(() -> {
-            tunnelRiskService.dropTable(time);
-            tunnelRiskService.createTable(time);
-        }, msgTimestampTaskAsyncPool);
-    }
-    private CompletableFuture<Void> initRiskEventTable(String time) {
-        return CompletableFuture.runAsync(() -> {
-            riskEventService.dropTable(time);
-            riskEventService.createTable(time);
-        }, msgTimestampTaskAsyncPool);
-    }
+
+//    public CompletableFuture<Void> initEventTable(String time) {
+//        return CompletableFuture.runAsync(() -> {
+//            carEventService.dropTable(time);
+//            carEventService.createTable(time);
+//        }, msgTimestampTaskAsyncPool);
+//    }
+//
+//    public CompletableFuture<Void> initPostureTable(String time) {
+//        return CompletableFuture.runAsync(() -> {
+//            postureService.dropTable(time);
+//            postureService.createTable(time);
+//        }, msgTimestampTaskAsyncPool);
+//    }
+//
+//    public CompletableFuture<Void> initFiberMetricTable(String time) {
+//        return CompletableFuture.runAsync(() -> {
+//            fiberMetricService.dropTable(time);
+//            fiberMetricService.createTable(time);
+//        }, msgTimestampTaskAsyncPool);
+//    }
+//
+//    public CompletableFuture<Void> initRadarMetricTable(String time) {
+//        return CompletableFuture.runAsync(() -> {
+//            radarMetricService.dropTable(time);
+//            radarMetricService.createTable(time);
+//        }, msgTimestampTaskAsyncPool);
+//    }
+//
+//    public CompletableFuture<Void> initFiberSecMetricTable(String time) {
+//        return CompletableFuture.runAsync(() -> {
+//            fiberSecMetricService.dropTable(time);
+//            fiberSecMetricService.createTable(time);
+//        }, msgTimestampTaskAsyncPool);
+//    }
+//
+//    public CompletableFuture<Void> initRadarSecMetricTable(String time) {
+//        return CompletableFuture.runAsync(() -> {
+//            radarSecMetricService.dropTable(time);
+//            radarSecMetricService.createTable(time);
+//        }, msgTimestampTaskAsyncPool);
+//    }
+//
+//    public CompletableFuture<Void> initRadarAllSecMetricTable(String time) {
+//        return CompletableFuture.runAsync(() -> {
+//            radarAllSecMetricService.dropTable(time);
+//            radarAllSecMetricService.createTable(time);
+//        }, msgTimestampTaskAsyncPool);
+//    }
+////    private CompletableFuture<Void> initRiskTable(String time) {
+////        return CompletableFuture.runAsync(() -> {
+////            riskService.dropTable(time);
+////            riskService.createTable(time);
+////        }, msgTimestampTaskAsyncPool);
+////    }
+//private CompletableFuture<Void> initParametersTable(String time) {
+//    return CompletableFuture.runAsync(() -> {
+//        parametersService.dropTable(time);
+//        parametersService.createTable(time);
+//    }, msgTimestampTaskAsyncPool);
+//}
+//    private CompletableFuture<Void> initBottleneckAreaStateTable(String time) {
+//        return CompletableFuture.runAsync(() -> {
+//            bottleneckAreaStateService.dropTable(time);
+//            bottleneckAreaStateService.createTable(time);
+//        }, msgTimestampTaskAsyncPool);
+//    }
+//    private CompletableFuture<Void> initTnnelRiskTable(String time) {
+//        return CompletableFuture.runAsync(() -> {
+//            tunnelRiskService.dropTable(time);
+//            tunnelRiskService.createTable(time);
+//        }, msgTimestampTaskAsyncPool);
+//    }
+//    private CompletableFuture<Void> initRiskEventTable(String time) {
+//        return CompletableFuture.runAsync(() -> {
+//            riskEventService.dropTable(time);
+//            riskEventService.createTable(time);
+//        }, msgTimestampTaskAsyncPool);
+//    }
 }

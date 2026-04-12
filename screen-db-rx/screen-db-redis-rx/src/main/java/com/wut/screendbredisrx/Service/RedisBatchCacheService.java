@@ -7,7 +7,6 @@ import com.wut.screencommonrx.Util.DateParamParseUtil;
 import com.wut.screencommonrx.Util.MessagePrintUtil;
 import com.wut.screendbmysqlrx.Model.CarEvent;
 import com.wut.screendbmysqlrx.Model.Traj;
-import com.wut.screendbmysqlrx.Service.CarEventService;
 import com.wut.screendbmysqlrx.Service.TrajService;
 import com.wut.screendbredisrx.Context.BatchCacheTimeContext;
 import jakarta.annotation.PostConstruct;
@@ -38,17 +37,15 @@ public class RedisBatchCacheService {
     private final BatchCacheTimeContext batchCacheTimeContext;
     private final StringRedisTemplate stringRedisTemplate;
     private final TrajService trajService;
-    private final CarEventService carEventService;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private static final ReentrantLock TRAJ_CACHE_LOCK = new ReentrantLock();
     private static final ReentrantLock EVENT_CACHE_LOCK = new ReentrantLock();
 
     @Autowired
-    public RedisBatchCacheService(BatchCacheTimeContext batchCacheTimeContext, StringRedisTemplate stringRedisTemplate, TrajService trajService, CarEventService carEventService, Executor redisTaskAsyncPool) {
+    public RedisBatchCacheService(BatchCacheTimeContext batchCacheTimeContext, StringRedisTemplate stringRedisTemplate, TrajService trajService,  Executor redisTaskAsyncPool) {
         this.batchCacheTimeContext = batchCacheTimeContext;
         this.stringRedisTemplate = stringRedisTemplate;
         this.trajService = trajService;
-        this.carEventService = carEventService;
         this.redisTaskAsyncPool = redisTaskAsyncPool;
     }
 
@@ -83,23 +80,23 @@ public class RedisBatchCacheService {
         }
     }
 
-    public void storeEventCache(List<CarEvent> insertList, List<CarEvent> updateList, long timestamp) {
-        var storeEventInsertTask = storeEventInsertCache(insertList);
-        var storeEventUpdateTask = storeEventUpdateCache(updateList);
-        try {
-            CompletableFuture.allOf(storeEventInsertTask, storeEventUpdateTask).get(ASYNC_SERVICE_TIMEOUT, TimeUnit.SECONDS);
-            if (batchCacheTimeContext.recordEventCacheTimestamp(timestamp)) {
-                var eventInsertListTask = CompletableFuture.supplyAsync(this::getEventInsertBatchCache, redisTaskAsyncPool);
-                var eventUpdateListTask = CompletableFuture.supplyAsync(this::getEventUpdateBatchCache, redisTaskAsyncPool);
-                CompletableFuture.allOf(eventInsertListTask, eventUpdateListTask).get(ASYNC_SERVICE_TIMEOUT, TimeUnit.SECONDS);
-                saveEventBatchCache(
-                        DateParamParseUtil.getDateTimeStr(timestamp - EVENT_BATCH_RECORD_TIME_COND),
-                        eventInsertListTask.get(),
-                        eventUpdateListTask.get()
-                ).thenRunAsync(() -> {});
-            }
-        } catch (Exception e) { MessagePrintUtil.printException(e, "storeEventCache"); }
-    }
+//    public void storeEventCache(List<CarEvent> insertList, List<CarEvent> updateList, long timestamp) {
+//        var storeEventInsertTask = storeEventInsertCache(insertList);
+//        var storeEventUpdateTask = storeEventUpdateCache(updateList);
+//        try {
+//            CompletableFuture.allOf(storeEventInsertTask, storeEventUpdateTask).get(ASYNC_SERVICE_TIMEOUT, TimeUnit.SECONDS);
+//            if (batchCacheTimeContext.recordEventCacheTimestamp(timestamp)) {
+//                var eventInsertListTask = CompletableFuture.supplyAsync(this::getEventInsertBatchCache, redisTaskAsyncPool);
+//                var eventUpdateListTask = CompletableFuture.supplyAsync(this::getEventUpdateBatchCache, redisTaskAsyncPool);
+//                CompletableFuture.allOf(eventInsertListTask, eventUpdateListTask).get(ASYNC_SERVICE_TIMEOUT, TimeUnit.SECONDS);
+//                saveEventBatchCache(
+//                        DateParamParseUtil.getDateTimeStr(timestamp - EVENT_BATCH_RECORD_TIME_COND),
+//                        eventInsertListTask.get(),
+//                        eventUpdateListTask.get()
+//                ).thenRunAsync(() -> {});
+//            }
+//        } catch (Exception e) { MessagePrintUtil.printException(e, "storeEventCache"); }
+//    }
 
     public CompletableFuture<Void> storeEventInsertCache(List<CarEvent> carEventList) {
         return CompletableFuture.runAsync(() -> {
@@ -164,19 +161,19 @@ public class RedisBatchCacheService {
         }, redisTaskAsyncPool);
     }
 
-    public CompletableFuture<Void> saveEventBatchCache(String date, List<CarEvent> readyToInsertList, List<CarEvent> readyToUpdateList) {
-        return CompletableFuture.runAsync(() -> {
-            try {
-                EVENT_CACHE_LOCK.lock();
-                if (!CollectionEmptyUtil.forList(readyToInsertList)) {
-                    carEventService.storeEventData(date, readyToInsertList);
-                }
-                if (!CollectionEmptyUtil.forList(readyToUpdateList)) {
-                    carEventService.updateEventData(date, readyToUpdateList);
-                }
-            } catch (Exception e) { MessagePrintUtil.printException(e, "saveEventBatchCache"); }
-            finally { EVENT_CACHE_LOCK.unlock(); }
-        }, redisTaskAsyncPool);
-    }
+//    public CompletableFuture<Void> saveEventBatchCache(String date, List<CarEvent> readyToInsertList, List<CarEvent> readyToUpdateList) {
+//        return CompletableFuture.runAsync(() -> {
+//            try {
+//                EVENT_CACHE_LOCK.lock();
+//                if (!CollectionEmptyUtil.forList(readyToInsertList)) {
+//                    carEventService.storeEventData(date, readyToInsertList);
+//                }
+//                if (!CollectionEmptyUtil.forList(readyToUpdateList)) {
+//                    carEventService.updateEventData(date, readyToUpdateList);
+//                }
+//            } catch (Exception e) { MessagePrintUtil.printException(e, "saveEventBatchCache"); }
+//            finally { EVENT_CACHE_LOCK.unlock(); }
+//        }, redisTaskAsyncPool);
+//    }
 
 }
