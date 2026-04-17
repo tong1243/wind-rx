@@ -36,13 +36,17 @@ public class RedisModelDataService {
 
     @PostConstruct
     public void initModelDataCache() {
-        stringRedisTemplate.delete(REDIS_KEY_PLATE_MODEL_DATA);
-        stringRedisTemplate.delete(REDIS_KEY_FIBER_MODEL_DATA);
-        stringRedisTemplate.delete(REDIS_KEY_LASER_MODEL_DATA);
-        stringRedisTemplate.delete(REDIS_KEY_WAVE_MODEL_DATA);
-        stringRedisTemplate.delete(REDIS_KEY_FIBER_FLUSH_MODEL);
-        stringRedisTemplate.delete(REDIS_KEY_LASER_FLUSH_MODEL);
-        stringRedisTemplate.delete(REDIS_KEY_WAVE_FLUSH_MODEL);
+        try {
+            stringRedisTemplate.delete(REDIS_KEY_PLATE_MODEL_DATA);
+            stringRedisTemplate.delete(REDIS_KEY_FIBER_MODEL_DATA);
+            stringRedisTemplate.delete(REDIS_KEY_LASER_MODEL_DATA);
+            stringRedisTemplate.delete(REDIS_KEY_WAVE_MODEL_DATA);
+            stringRedisTemplate.delete(REDIS_KEY_FIBER_FLUSH_MODEL);
+            stringRedisTemplate.delete(REDIS_KEY_LASER_FLUSH_MODEL);
+            stringRedisTemplate.delete(REDIS_KEY_WAVE_FLUSH_MODEL);
+        } catch (Exception e) {
+            MessagePrintUtil.printException(e, "initModelDataCache");
+        }
     }
 
     public Boolean isModelZSetEmpty(String key) {
