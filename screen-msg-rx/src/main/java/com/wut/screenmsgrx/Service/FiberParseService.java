@@ -30,6 +30,7 @@ import static com.wut.screencommonrx.Static.FusionModuleStatic.MODEL_TYPE_FIBER;
 public class FiberParseService {
     private static final Logger log = LoggerFactory.getLogger(FiberParseService.class);
     private static final long TRAVEL_RESERVATION_CACHE_TTL_MS = 1000L;
+    private static final long UC_REALTIME_BIND_TTL_SECONDS = 2 * 60 * 60L;
 
     @Qualifier("msgTaskAsyncPool")
     private final Executor msgTaskAsyncPool;
@@ -106,6 +107,7 @@ public class FiberParseService {
                 ucCarRealTime.getRealSpeed(),
                 ucCarRealTime.getDrivingDirection(),
                 ucCarRealTime.getLaneNumber(),
+                ucCarRealTime.getRoad(),
                 ucCarRealTime.getReportTime()
         );
     }
@@ -196,35 +198,31 @@ public class FiberParseService {
         }
 
         TravelReservation latestReservation = getLatestTravelReservation();
-        String reservedPhone = latestReservation == null ? "" : latestReservation.getUserPhone();
-        String reservedCarLicense = latestReservation == null ? "" : latestReservation.getCarLicense();
+        String reservedPhone = normalizePhone(latestReservation == null ? "" : latestReservation.getUserPhone());
+        String reservedCarLicense = truncate(firstNonBlank(latestReservation == null ? "" : latestReservation.getCarLicense()), 20);
 
-        String userPhone = normalizePhone(firstNonBlank(
-                parseText(dataNode, "userPhone", ""),
-                parseText(dataNode, "user_phone", ""),
-                parseText(dataNode, "phone", ""),
-                parseText(dataNode, "mobile", ""),
-                reservedPhone
-        ));
-        if (userPhone.isBlank()) {
-            userPhone = buildFallbackPhone(vehicleModel.getId());
-            log.warn("user phone missing, fallback userPhone={}, id={}", userPhone, vehicleModel.getId());
-        }
-
-        String carLicense = firstNonBlank(
-                parseText(dataNode, "carLicense", ""),
-                parseText(dataNode, "car_license", ""),
-                parseText(dataNode, "plateNo", ""),
-                parseText(dataNode, "license", ""),
+        String upstreamCarId = normalizeUpstreamCarId(firstNonBlank(
                 parseText(dataNode, "carId", ""),
-                reservedCarLicense,
-                vehicleModel.getCarId()
-        );
-        if (carLicense == null || carLicense.isBlank()) {
-            carLicense = "UC-" + (vehicleModel.getId() == null ? "0" : vehicleModel.getId());
-            log.warn("car license missing, fallback carLicense={}, id={}", carLicense, vehicleModel.getId());
+                vehicleModel.getCarId() == null ? "" : vehicleModel.getCarId(),
+                vehicleModel.getId() == null ? "" : String.valueOf(vehicleModel.getId())
+        ));
+
+        RedisModelDataService.UcRealtimeCarBinding binding = redisModelDataService.getUcRealtimeCarBinding(upstreamCarId);
+        if (binding == null && !upstreamCarId.isBlank() && !reservedPhone.isBlank() && !reservedCarLicense.isBlank()) {
+            redisModelDataService.bindUcRealtimeCar(upstreamCarId, reservedPhone, reservedCarLicense, UC_REALTIME_BIND_TTL_SECONDS);
+            binding = redisModelDataService.getUcRealtimeCarBinding(upstreamCarId);
         }
-        carLicense = truncate(carLicense, 20);
+        if (binding == null) {
+            log.warn("skip uc_car_real_time store due to missing plate binding, id={}, upstreamCarId={}", vehicleModel.getId(), upstreamCarId);
+            return null;
+        }
+
+        String userPhone = normalizePhone(binding.userPhone());
+        String carLicense = truncate(binding.carLicense(), 20);
+        if (userPhone.isBlank() || carLicense.isBlank()) {
+            log.warn("skip uc_car_real_time store due to invalid plate binding, id={}, upstreamCarId={}", vehicleModel.getId(), upstreamCarId);
+            return null;
+        }
 
         String currentPile = firstNonBlank(
                 parseText(dataNode, "currentPile", ""),
@@ -245,6 +243,7 @@ public class FiberParseService {
         int laneNumber = normalizeLane(parseInt(dataNode, "Lane_ID",
                 parseInt(dataNode, "laneId",
                         parseInt(dataNode, "lane", vehicleModel.getLane() == null ? 1 : vehicleModel.getLane()))));
+        Integer road = normalizeRoad(parseInt(dataNode, "road", vehicleModel.getRoad() == null ? 0 : vehicleModel.getRoad()));
         double rawSpeed = parseDouble(dataNode, "speed", vehicleModel.getSpeed() == null ? 0.0 : vehicleModel.getSpeed());
         int realSpeed = normalizeSpeed(rawSpeed);
 
@@ -256,6 +255,7 @@ public class FiberParseService {
                 realSpeed,
                 drivingDirection,
                 laneNumber,
+                road,
                 LocalDateTime.now()
         );
     }
@@ -293,6 +293,17 @@ public class FiberParseService {
             return digits;
         }
         return digits.substring(digits.length() - 11);
+    }
+
+    private String normalizeUpstreamCarId(String upstreamCarId) {
+        if (upstreamCarId == null || upstreamCarId.isBlank()) {
+            return "";
+        }
+        String normalized = upstreamCarId.trim();
+        if ("0".equals(normalized)) {
+            return "";
+        }
+        return normalized;
     }
 
     private String buildFallbackPhone(Integer id) {
@@ -356,6 +367,13 @@ public class FiberParseService {
             return 1;
         }
         return Math.min(laneNumber, 4);
+    }
+
+    private Integer normalizeRoad(int road) {
+        if (road <= 0) {
+            return null;
+        }
+        return road;
     }
 
     private String formatPile(Double distanceMeter) {

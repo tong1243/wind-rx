@@ -36,6 +36,9 @@ public class UcCarRealTimeCurrent {
     @TableField("lane_number")
     private Integer laneNumber;
 
+    @TableField("road")
+    private Integer road;
+
     @TableField("report_time")
     private LocalDateTime reportTime;
 }

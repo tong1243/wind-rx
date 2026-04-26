@@ -11,6 +11,7 @@
             real_speed,
             driving_direction,
             lane_number,
+            road,
             report_time
         )
         VALUES
@@ -21,6 +22,7 @@
             #{item.realSpeed},
             #{item.drivingDirection},
             #{item.laneNumber},
+            #{item.road},
             #{item.reportTime}
         )
         ON DUPLICATE KEY UPDATE
@@ -28,6 +30,7 @@
             real_speed = VALUES(real_speed),
             driving_direction = VALUES(driving_direction),
             lane_number = VALUES(lane_number),
+            road = VALUES(road),
             report_time = VALUES(report_time)
     </insert>
 

@@ -13,6 +13,7 @@ import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -184,5 +185,43 @@ public class RedisModelDataService {
             });
         } catch (Exception e) { MessagePrintUtil.printException(e, "removePlateModelData"); }
     }
+
+    public void bindUcRealtimeCar(String upstreamCarId, String userPhone, String carLicense, long ttlSeconds) {
+        if (upstreamCarId == null || upstreamCarId.isBlank() || userPhone == null || userPhone.isBlank() || carLicense == null || carLicense.isBlank()) {
+            return;
+        }
+        try {
+            String redisKey = REDIS_KEY_UC_REALTIME_CAR_BIND_PREFIX + upstreamCarId.trim();
+            String redisValue = objectMapper.writeValueAsString(new UcRealtimeCarBinding(userPhone.trim(), carLicense.trim()));
+            long safeTtlSeconds = Math.max(ttlSeconds, 60L);
+            stringRedisTemplate.opsForValue().set(redisKey, redisValue, Duration.ofSeconds(safeTtlSeconds));
+        } catch (Exception e) {
+            MessagePrintUtil.printException(e, "bindUcRealtimeCar");
+        }
+    }
+
+    public UcRealtimeCarBinding getUcRealtimeCarBinding(String upstreamCarId) {
+        if (upstreamCarId == null || upstreamCarId.isBlank()) {
+            return null;
+        }
+        try {
+            String redisKey = REDIS_KEY_UC_REALTIME_CAR_BIND_PREFIX + upstreamCarId.trim();
+            String redisValue = stringRedisTemplate.opsForValue().get(redisKey);
+            if (redisValue == null || redisValue.isBlank()) {
+                return null;
+            }
+            UcRealtimeCarBinding binding = objectMapper.readValue(redisValue, UcRealtimeCarBinding.class);
+            if (binding == null || binding.userPhone() == null || binding.userPhone().isBlank()
+                    || binding.carLicense() == null || binding.carLicense().isBlank()) {
+                return null;
+            }
+            return binding;
+        } catch (Exception e) {
+            MessagePrintUtil.printException(e, "getUcRealtimeCarBinding");
+            return null;
+        }
+    }
+
+    public record UcRealtimeCarBinding(String userPhone, String carLicense) {}
 
 }

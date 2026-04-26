@@ -23,5 +23,6 @@ public class DbModuleStatic {
     public static final String REDIS_KEY_TRAJ_BATCH_CACHE = "trajBatchCache";
     public static final String REDIS_KEY_EVENT_INSERT_BATCH_CACHE = "eventInsertBatchCache";
     public static final String REDIS_KEY_EVENT_UPDATE_BATCH_CACHE = "eventUpdateBatchCache";
+    public static final String REDIS_KEY_UC_REALTIME_CAR_BIND_PREFIX = "ucRealtimeCarBind:";
 
 }
