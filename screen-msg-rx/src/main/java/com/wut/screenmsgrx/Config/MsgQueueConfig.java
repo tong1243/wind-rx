@@ -18,27 +18,4 @@ public class MsgQueueConfig {
         return new Queue(QUEUE_NAME_FUSION);
     }
 
-    @Bean("queueSection")
-    public Queue queueSection() {
-        return new Queue(QUEUE_NAME_SECTION);
-    }
-
-    @Bean("queueEvent")
-    public Queue queueEvent() {
-        return new Queue(QUEUE_NAME_EVENT);
-    }
-
-    @Bean("queuePosture")
-    public Queue queuePosture() {
-        return new Queue(QUEUE_NAME_POSTURE);
-    }
-
-    @Bean("queueDevice")
-    public Queue queueDevice() {
-        return new Queue(QUEUE_NAME_DEVICE);
-    }
-    @Bean("risk")
-    public Queue queueRisk() {
-        return new Queue(QUEUE_NAME_RISK);
-    }
 }
