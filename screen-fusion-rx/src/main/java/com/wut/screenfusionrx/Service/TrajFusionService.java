@@ -130,7 +130,7 @@ public List<Traj> collectFusionTraj(long timestamp) {
         try {
             redisTrajFusionService.storeTrajData(trajList);
             CompletableFuture.allOf(
-                    sendTrajFusionFinishMessageTask(timestamp),
+//                    sendTrajFusionFinishMessageTask(timestamp),
                     sendTrajFrameMessageTask(trajList, timestamp),
                     storeTrajFusionBatchCacheTask(trajList, timestamp)
             ).get(ASYNC_SERVICE_TIMEOUT, TimeUnit.SECONDS);
