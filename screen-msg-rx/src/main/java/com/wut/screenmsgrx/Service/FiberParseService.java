@@ -105,6 +105,7 @@ public class FiberParseService {
                 ucCarRealTime.getCarLicense(),
                 ucCarRealTime.getCurrentPile(),
                 ucCarRealTime.getRealSpeed(),
+                ucCarRealTime.getDirection(),
                 ucCarRealTime.getDrivingDirection(),
                 ucCarRealTime.getLaneNumber(),
                 ucCarRealTime.getRoad(),
@@ -239,6 +240,12 @@ public class FiberParseService {
             log.warn("driving direction invalid, fallback direction={}, id={}, roadDirect={}",
                     drivingDirection, vehicleModel.getId(), vehicleModel.getRoadDirect());
         }
+        Integer direction = normalizeDirection(parseInt(dataNode, "direction",
+                parseInt(dataNode, "roadDirect",
+                        parseInt(vehicleModel.getRoadDirect(), 0))));
+        if (direction == null) {
+            direction = toDirectionCode(drivingDirection);
+        }
 
         int laneNumber = normalizeLane(parseInt(dataNode, "Lane_ID",
                 parseInt(dataNode, "laneId",
@@ -253,6 +260,7 @@ public class FiberParseService {
                 carLicense,
                 currentPile,
                 realSpeed,
+                direction,
                 drivingDirection,
                 laneNumber,
                 road,
@@ -367,6 +375,23 @@ public class FiberParseService {
             return 1;
         }
         return Math.min(laneNumber, 4);
+    }
+
+    private Integer normalizeDirection(int direction) {
+        if (direction == 1 || direction == 2) {
+            return direction;
+        }
+        return null;
+    }
+
+    private Integer toDirectionCode(String drivingDirection) {
+        if ("hamimi_to_tuyugou".equalsIgnoreCase(drivingDirection)) {
+            return 1;
+        }
+        if ("tuyugou_to_hamimi".equalsIgnoreCase(drivingDirection)) {
+            return 2;
+        }
+        return null;
     }
 
     private Integer normalizeRoad(int road) {

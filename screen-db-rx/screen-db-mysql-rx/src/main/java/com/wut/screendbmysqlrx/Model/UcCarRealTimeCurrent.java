@@ -30,6 +30,9 @@ public class UcCarRealTimeCurrent {
     @TableField("real_speed")
     private Integer realSpeed;
 
+    @TableField("direction")
+    private Integer direction;
+
     @TableField("driving_direction")
     private String drivingDirection;
 
