@@ -18,7 +18,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
@@ -253,6 +255,7 @@ public class FiberParseService {
         Integer road = normalizeRoad(parseInt(dataNode, "road", vehicleModel.getRoad() == null ? 0 : vehicleModel.getRoad()));
         double rawSpeed = parseDouble(dataNode, "speed", vehicleModel.getSpeed() == null ? 0.0 : vehicleModel.getSpeed());
         int realSpeed = normalizeSpeed(rawSpeed);
+        LocalDateTime reportTime = resolveReportTime(dataNode, vehicleModel);
 
         return new UcCarRealTime(
                 null,
@@ -264,8 +267,29 @@ public class FiberParseService {
                 drivingDirection,
                 laneNumber,
                 road,
-                LocalDateTime.now()
+                reportTime
         );
+    }
+
+    private LocalDateTime resolveReportTime(JsonNode dataNode, VehicleModel vehicleModel) {
+        long ts = parseLong(dataNode, "timestamp", 0L);
+        if (ts <= 0L) {
+            ts = parseLong(dataNode, "timeStamp", 0L);
+        }
+        if (ts <= 0L && vehicleModel != null && vehicleModel.getTimestamp() != null) {
+            ts = vehicleModel.getTimestamp();
+        }
+        if (ts <= 0L) {
+            return LocalDateTime.now();
+        }
+
+        // UDP timestamp can be seconds(10 digits) or milliseconds(13 digits).
+        long epochMilli = ts < 100_000_000_000L ? ts * 1000L : ts;
+        try {
+            return LocalDateTime.ofInstant(Instant.ofEpochMilli(epochMilli), ZoneId.systemDefault());
+        } catch (Exception e) {
+            return LocalDateTime.now();
+        }
     }
 
     private String resolveDrivingDirection(JsonNode dataNode, String roadDirect) {
