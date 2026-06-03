@@ -4,7 +4,8 @@ import java.util.List;
 
 public class DbModuleStatic {
     public static final List<String> DYNAMIC_TABLE_NAMES = List.of(
-            "traj_near_real"
+            "traj_near_real",
+            "uc_car_real_time"
     );
 
     public static final String TABLE_SUFFIX_SEPARATOR  = "_";
